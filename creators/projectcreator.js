@@ -1,23 +1,52 @@
+'use strict'
+
 var fs = require('fs');
 var path = require('path');
 
-let copyTemplate = function(from, to) {
-    from = path.join(__dirname, 'templates', from);
-    write(to, fs.readFileSync(from, 'utf-8'))
+let projectcreator = {
+    copyTemplate: function(from, to) {
+        fs.stat(to, function(err, stat) {
+            if (err) {
+                this.mkdir(to)
+            }
+            this.travel(from, (pathname, isdir) => {
+                if (isdir) {
+                    this.mkdir(path.join(to, path.basename(pathname)));
+                } else {
+                    this.copyFile(pathname, path.join(to, path.basename(pathname)));
+                }
+            });
+        }.bind(this));
+    },
+
+    copyFile: function(from, to) {
+        this.write(to, fs.readFileSync(from, 'utf-8'))
+    },
+
+    write: function(path, str, mode) {
+        fs.writeFileSync(path, str)
+    },
+
+    mkdir: function(dirname) {
+        try {
+            fs.statSync(path.dirname(dirname));
+        } catch (err) {
+            this.mkdir(path.dirname(dirname));
+        }
+        fs.mkdirSync(dirname);
+    },
+
+    travel: function(dir, callback) {
+        fs.readdirSync(dir).forEach(function(file) {
+            var pathname = path.join(dir, file);
+            if (fs.statSync(pathname).isDirectory()) {
+                callback(pathname, true)
+                this.travel(pathname, callback);
+            } else {
+                callback(pathname, false);
+            }
+        });
+    }
 }
 
-let write = function(path, str, mode) {
-    fs.writeFileSync(path, str)
-}
-
-let mkdir = function(path, fn) {
-    fs.mkdir(path, function(err) {
-        fn && fn()
-    })
-}
-
-export {
-    copyTemplate,
-    write,
-    mkdir
-};
+module.exports = projectcreator;
